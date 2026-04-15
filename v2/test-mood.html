@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CorpseMood — Tests</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ddd; padding: 20px; }
+    .pass { color: #4a9; }
+    .fail { color: #c44; font-weight: bold; }
+    h2 { color: #c9a84c; margin-top: 24px; }
+    pre { background: #1a1a1a; padding: 8px; border-radius: 4px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>CorpseMood Tests</h1>
+  <div id="results"></div>
+  <script src="js/corpse-mood.js"></script>
+  <script>
+  (function () {
+    var results = document.getElementById('results');
+    var passed = 0;
+    var failed = 0;
+
+    function assert(condition, msg) {
+      if (condition) {
+        passed++;
+        results.innerHTML += '<div class="pass">✓ ' + msg + '</div>';
+      } else {
+        failed++;
+        results.innerHTML += '<div class="fail">✗ ' + msg + '</div>';
+      }
+    }
+
+    function assertInRange(val, min, max, msg) {
+      assert(val >= min && val <= max, msg + ' (got ' + val.toFixed(3) + ', expected ' + min + ' to ' + max + ')');
+    }
+
+    function section(name) {
+      results.innerHTML += '<h2>' + name + '</h2>';
+    }
+
+    /* ---- init ---- */
+    section('init()');
+    CorpseMood.init();
+    var p = CorpseMood.getProfile();
+    assert(p.valence === 0, 'Initial valence is 0');
+    assert(p.energy === 0, 'Initial energy is 0');
+    assert(p.texture === 0, 'Initial texture is 0');
+    assert(p.strangeness === 0, 'Initial strangeness is 0');
+    assert(p.phase === 'early', 'Initial phase is early');
+    assert(p.turnCount === 0, 'Initial turnCount is 0');
+
+    /* ---- analyze (read-only) ---- */
+    section('analyze() — read-only');
+    CorpseMood.init();
+    var delta = CorpseMood.analyze('the skull bleeds darkness into the void');
+    assert(delta.valence < 0, 'Dark text gives negative valence');
+    var pAfter = CorpseMood.getProfile();
+    assert(pAfter.valence === 0, 'analyze() does not mutate profile');
+
+    /* ---- update (mutates) ---- */
+    section('update() — mutates profile');
+    CorpseMood.init();
+    CorpseMood.update('the skull bleeds darkness into the void');
+    var p2 = CorpseMood.getProfile();
+    assert(p2.valence < 0, 'Dark text pushes valence negative');
+    assert(p2.turnCount === 1, 'turnCount incremented');
+
+    /* ---- dark text ---- */
+    section('Dark text analysis');
+    CorpseMood.init();
+    var d = CorpseMood.analyze('death and shadow haunt the grave of sorrow');
+    assert(d.valence < -0.2, 'Heavy dark words give strong negative valence: ' + d.valence.toFixed(3));
+
+    /* ---- light text ---- */
+    section('Light text analysis');
+    CorpseMood.init();
+    d = CorpseMood.analyze('golden light blooms in the warm garden of joy');
+    assert(d.valence > 0.2, 'Light words give positive valence: ' + d.valence.toFixed(3));
+
+    /* ---- energy: still ---- */
+    section('Still energy');
+    d = CorpseMood.analyze('silence drifts and settles in the quiet hush');
+    assert(d.energy < -0.2, 'Quiet words give negative energy: ' + d.energy.toFixed(3));
+
+    /* ---- energy: violent ---- */
+    section('Violent energy');
+    d = CorpseMood.analyze('the storm crashes and shatters EVERYTHING!!!');
+    assert(d.energy > 0.2, 'Violent words + exclamation give positive energy: ' + d.energy.toFixed(3));
+
+    /* ---- texture: visceral ---- */
+    section('Visceral texture');
+    d = CorpseMood.analyze('bone and blood and tooth and spine and stone');
+    assert(d.texture > 0.2, 'Body words give positive texture: ' + d.texture.toFixed(3));
+
+    /* ---- texture: ethereal ---- */
+    section('Ethereal texture');
+    d = CorpseMood.analyze('the dream fades like mist and memory dissolves into absence');
+    assert(d.texture < -0.2, 'Ethereal words give negative texture: ' + d.texture.toFixed(3));
+
+    /* ---- strangeness: surreal ---- */
+    section('Surreal strangeness');
+    d = CorpseMood.analyze('the eye-clock melts into kaleidoscope paradox');
+    assert(d.strangeness > 0.2, 'Surreal words give positive strangeness: ' + d.strangeness.toFixed(3));
+
+    /* ---- phase multiplier ---- */
+    section('Phase multiplier');
+    CorpseMood.init();
+    CorpseMood.update('death death death dark shadow void');
+    var earlyVal = CorpseMood.getProfile().valence;
+    CorpseMood.init();
+    /* Simulate 5 neutral turns then a dark turn */
+    CorpseMood.update('word'); CorpseMood.update('word'); CorpseMood.update('word');
+    CorpseMood.update('word'); CorpseMood.update('word');
+    CorpseMood.update('death death death dark shadow void');
+    var lateVal = CorpseMood.getProfile().valence;
+    assert(Math.abs(lateVal) > Math.abs(earlyVal), 'Late-phase shift is stronger than early-phase (' + lateVal.toFixed(3) + ' vs ' + earlyVal.toFixed(3) + ')');
+
+    /* ---- getCSSProperties ---- */
+    section('getCSSProperties()');
+    CorpseMood.init();
+    CorpseMood.update('death and shadow');
+    var css = CorpseMood.getCSSProperties();
+    assert(typeof css['--mood-bg-hue'] === 'string', 'Returns --mood-bg-hue');
+    assert(typeof css['--mood-transition-ms'] === 'string', 'Returns --mood-transition-ms');
+    assert(typeof css['--mood-valence'] === 'string', 'Returns --mood-valence');
+
+    /* ---- getPromptModifiers ---- */
+    section('getPromptModifiers()');
+    CorpseMood.init();
+    CorpseMood.update('death shadow dark void');
+    CorpseMood.update('death shadow dark void');
+    CorpseMood.update('death shadow dark void');
+    var mods = CorpseMood.getPromptModifiers();
+    assert(mods.systemPromptSuffix.length > 0, 'Has system prompt suffix');
+    assert(typeof mods.nounWeights === 'object', 'Has noun weights');
+    assert(typeof mods.strategyWeights === 'object', 'Has strategy weights');
+
+    /* ---- getRevealStyle ---- */
+    section('getRevealStyle()');
+
+    /* Séance: dark + still + ethereal */
+    CorpseMood.init();
+    for (var i = 0; i < 6; i++) CorpseMood.update('silence shadow ghost mist whisper death fade');
+    var reveal = CorpseMood.getRevealStyle();
+    assert(reveal.archetype === 'seance', 'Dark+still+ethereal → séance (got ' + reveal.archetype + ')');
+    assert(reveal.title === 'The Corpse Whispers', 'Séance title');
+
+    /* Eruption: dark + energetic + visceral */
+    CorpseMood.init();
+    for (var j = 0; j < 6; j++) CorpseMood.update('blood crash bone shatter skull thunder slash!!');
+    reveal = CorpseMood.getRevealStyle();
+    assert(reveal.archetype === 'eruption', 'Dark+energetic+visceral → eruption (got ' + reveal.archetype + ')');
+
+    /* Illumination: light + still + ethereal */
+    CorpseMood.init();
+    for (var k = 0; k < 6; k++) CorpseMood.update('golden light gentle dream soft glow warm silence');
+    reveal = CorpseMood.getRevealStyle();
+    assert(reveal.archetype === 'illumination', 'Light+still+ethereal → illumination (got ' + reveal.archetype + ')');
+
+    /* Manifesto: light + energetic + visceral */
+    CorpseMood.init();
+    for (var m = 0; m < 6; m++) CorpseMood.update('bright fire blaze stone iron thunder roar golden!');
+    reveal = CorpseMood.getRevealStyle();
+    assert(reveal.archetype === 'manifesto', 'Light+energetic+visceral → manifesto (got ' + reveal.archetype + ')');
+
+    /* Delirium: high strangeness */
+    CorpseMood.init();
+    for (var n = 0; n < 6; n++) CorpseMood.update('eye-clock bone-flower kaleidoscope labyrinth un-dream paradox impossible');
+    reveal = CorpseMood.getRevealStyle();
+    assert(reveal.archetype === 'delirium', 'High strangeness → delirium (got ' + reveal.archetype + ')');
+
+    /* ---- Summary ---- */
+    results.innerHTML += '<h2>Summary: ' + passed + ' passed, ' + failed + ' failed</h2>';
+    if (failed === 0) {
+      results.innerHTML += '<div class="pass" style="font-size:18px;">All tests passed!</div>';
+    }
+  })();
+  </script>
+</body>
+</html>
