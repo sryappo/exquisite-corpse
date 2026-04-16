@@ -144,7 +144,11 @@ var CorpseState = (function () {
   function fold() {
     /* commit currentLines to allLines */
     var author = state.turnNumber % 2 === 1 ? 'user' : 'app';
-    for (var i = 0; i < state.currentLines.length; i++) {
+    /* For turns > 1, currentLines[0] is the foundational carried over from the
+       previous turn — it was already committed then. Skip it to avoid duplicating
+       each "last" line and mis-attributing it to the current turn's author. */
+    var startIdx = state.turnNumber === 1 ? 0 : 1;
+    for (var i = startIdx; i < state.currentLines.length; i++) {
       state.allLines.push({
         text: state.currentLines[i],
         author: author,
