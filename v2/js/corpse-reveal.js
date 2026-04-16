@@ -2,20 +2,18 @@
 var CorpseReveal = (function () {
   'use strict';
 
-  function render(containerEl, allLines, revealStyle) {
-    containerEl.innerHTML = '';
+  /**
+   * render(scrollEl, allLines, revealStyle) → total animation duration (ms)
+   *
+   * Renders the poem lines into the provided scroll container. Clears only that
+   * container, so siblings like the reveal title and export-controls are preserved.
+   * The caller is responsible for updating the title separately.
+   */
+  function render(scrollEl, allLines, revealStyle) {
+    scrollEl.innerHTML = '';
 
     var config = revealStyle.config;
     var archetype = revealStyle.archetype;
-
-    var titleEl = document.createElement('div');
-    titleEl.className = 'reveal-title reveal-title--' + archetype;
-    titleEl.textContent = revealStyle.title;
-    containerEl.appendChild(titleEl);
-
-    var scrollEl = document.createElement('div');
-    scrollEl.className = 'poem-scroll';
-    containerEl.appendChild(scrollEl);
 
     var items = [];
     var currentTurn = 0;

@@ -298,11 +298,16 @@ var CorpseUI = (function () {
     }
 
     var titleEl = els.revealOverlay.querySelector('.reveal-title');
-    if (titleEl) titleEl.textContent = revealStyle.title;
+    if (titleEl) {
+      titleEl.textContent = revealStyle.title;
+      titleEl.className = 'reveal-title reveal-title--' + revealStyle.archetype;
+    }
 
+    /* Render into the poem-scroll container, NOT the whole overlay — the overlay
+       also holds the export-controls, which must be preserved across renders. */
     var totalDuration;
     if (typeof CorpseReveal !== 'undefined') {
-      totalDuration = CorpseReveal.render(els.revealOverlay, state.allLines, revealStyle);
+      totalDuration = CorpseReveal.render(els.poemScroll, state.allLines, revealStyle);
     } else {
       totalDuration = renderRevealFallback(state);
     }
